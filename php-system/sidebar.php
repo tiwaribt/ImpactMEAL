@@ -21,6 +21,9 @@
         <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'monitoring.php' ? 'active' : ''; ?>" href="monitoring.php">
             <i class="bi bi-clipboard-data me-3"></i> Monitoring
         </a>
+        <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'feedback.php' ? 'active' : ''; ?>" href="feedback.php">
+            <i class="bi bi-chat-left-text me-3"></i> Feedback
+        </a>
         <a class="nav-link <?php echo basename($_SERVER['PHP_SELF']) == 'gis.php' ? 'active' : ''; ?>" href="gis.php">
             <i class="bi bi-map me-3"></i> GIS View
         </a>

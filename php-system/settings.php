@@ -9,6 +9,21 @@ if ($_SESSION['role'] !== 'admin') {
     exit;
 }
 
+// Handle Project Addition
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'add_project') {
+    $id = uniqid();
+    $name = $_POST['name'];
+    $description = $_POST['description'] ?? '';
+    $status = 'active';
+    $startDate = date('Y-m-d');
+    $endDate = date('Y-m-d', strtotime('+1 year'));
+    
+    $stmt = $db->prepare("INSERT INTO projects (id, name, description, status, startDate, endDate) VALUES (?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$id, $name, $description, $status, $startDate, $endDate]);
+    header("Location: settings.php");
+    exit;
+}
+
 // Fetch Users
 $stmt = $db->prepare("SELECT * FROM users");
 $stmt->execute();
@@ -149,6 +164,35 @@ $projects = $stmt->fetchAll();
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Project Modal -->
+<div class="modal fade" id="addProjectModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow-xl">
+            <div class="modal-header border-0 p-4 pb-0">
+                <h5 class="modal-title fw-bold">Add New Project</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST">
+                <input type="hidden" name="action" value="add_project">
+                <div class="modal-body p-4">
+                    <div class="mb-4">
+                        <label class="form-label text-slate-500 x-small fw-bold text-uppercase tracking-widest">Project Name</label>
+                        <input type="text" name="name" class="form-control bg-light border-0 rounded-3 p-3" placeholder="e.g. Health Support Program" required>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label text-slate-500 x-small fw-bold text-uppercase tracking-widest">Description</label>
+                        <textarea name="description" class="form-control bg-light border-0 rounded-3 p-3" rows="3" placeholder="Brief project overview..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 p-4 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4">Add Project</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

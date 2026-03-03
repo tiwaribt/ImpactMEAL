@@ -8,23 +8,66 @@ $stmt->execute();
 $projects = $stmt->fetchAll();
 
 // Handle Form Submission
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'add') {
-    $id = uniqid();
-    $projectId = $_POST['projectId'];
-    $name = $_POST['name'];
-    $target = $_POST['target'];
-    $unit = $_POST['unit'];
-    $category = $_POST['category'];
-    
-    $stmt = $db->prepare("INSERT INTO indicators (id, projectId, name, target, unit, category, actual, achievedPercentage, gap, status) VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?, 'behind')");
-    $stmt->execute([$id, $projectId, $name, $target, $unit, $category, $target]);
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
+    if ($_POST['action'] == 'add') {
+        $id = uniqid();
+        $projectId = $_POST['projectId'];
+        $name = $_POST['name'];
+        $target = $_POST['target'];
+        $unit = $_POST['unit'];
+        $category = $_POST['category'];
+        
+        $stmt = $db->prepare("INSERT INTO indicators (id, projectId, name, target, unit, category, actual, achievedPercentage, gap, status) VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?, 'behind')");
+        $stmt->execute([$id, $projectId, $name, $target, $unit, $category, $target]);
+    } elseif ($_POST['action'] == 'edit') {
+        $id = $_POST['id'];
+        $projectId = $_POST['projectId'];
+        $name = $_POST['name'];
+        $target = $_POST['target'];
+        $unit = $_POST['unit'];
+        $category = $_POST['category'];
+        
+        $stmt = $db->prepare("UPDATE indicators SET projectId = ?, name = ?, target = ?, unit = ?, category = ? WHERE id = ?");
+        $stmt->execute([$projectId, $name, $target, $unit, $category, $id]);
+        
+        // Recalculate status
+        $stmt = $db->prepare("SELECT actual, target FROM indicators WHERE id = ?");
+        $stmt->execute([$id]);
+        $ind = $stmt->fetch();
+        $achieved = ($ind['actual'] / $ind['target']) * 100;
+        $gap = $ind['target'] - $ind['actual'];
+        $status = $achieved >= 90 ? 'on-track' : ($achieved >= 70 ? 'at-risk' : 'behind');
+        
+        $stmt = $db->prepare("UPDATE indicators SET achievedPercentage = ?, gap = ?, status = ? WHERE id = ?");
+        $stmt->execute([$achieved, $gap, $status, $id]);
+    } elseif ($_POST['action'] == 'delete') {
+        $id = $_POST['id'];
+        $stmt = $db->prepare("DELETE FROM indicators WHERE id = ?");
+        $stmt->execute([$id]);
+    }
     header("Location: indicators.php");
     exit;
 }
 
-// Fetch Indicators
-$stmt = $db->prepare("SELECT i.*, p.name as projectName FROM indicators i LEFT JOIN projects p ON i.projectId = p.id ORDER BY i.lastUpdated DESC");
-$stmt->execute();
+// Filtering
+$categoryFilter = $_GET['category'] ?? '';
+$statusFilter = $_GET['status'] ?? '';
+
+$query = "SELECT i.*, p.name as projectName FROM indicators i LEFT JOIN projects p ON i.projectId = p.id WHERE 1=1";
+$params = [];
+
+if ($categoryFilter) {
+    $query .= " AND i.category = ?";
+    $params[] = $categoryFilter;
+}
+if ($statusFilter) {
+    $query .= " AND i.status = ?";
+    $params[] = $statusFilter;
+}
+
+$query .= " ORDER BY i.lastUpdated DESC";
+$stmt = $db->prepare($query);
+$stmt->execute($params);
 $indicators = $stmt->fetchAll();
 ?>
 
@@ -37,6 +80,35 @@ $indicators = $stmt->fetchAll();
         <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addIndicatorModal">
             <i class="bi bi-plus-lg me-2"></i> Add Indicator
         </button>
+    </div>
+
+    <!-- Filters -->
+    <div class="card border-0 p-4 mb-4">
+        <form method="GET" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label text-slate-500 x-small fw-bold text-uppercase tracking-widest">Category</label>
+                <select name="category" class="form-select bg-light border-0 rounded-3">
+                    <option value="">All Categories</option>
+                    <option value="Outreach" <?php echo $categoryFilter == 'Outreach' ? 'selected' : ''; ?>>Outreach</option>
+                    <option value="Capacity Building" <?php echo $categoryFilter == 'Capacity Building' ? 'selected' : ''; ?>>Capacity Building</option>
+                    <option value="Accountability" <?php echo $categoryFilter == 'Accountability' ? 'selected' : ''; ?>>Accountability</option>
+                    <option value="Infrastructure" <?php echo $categoryFilter == 'Infrastructure' ? 'selected' : ''; ?>>Infrastructure</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label text-slate-500 x-small fw-bold text-uppercase tracking-widest">Status</label>
+                <select name="status" class="form-select bg-light border-0 rounded-3">
+                    <option value="">All Statuses</option>
+                    <option value="on-track" <?php echo $statusFilter == 'on-track' ? 'selected' : ''; ?>>On Track</option>
+                    <option value="at-risk" <?php echo $statusFilter == 'at-risk' ? 'selected' : ''; ?>>At Risk</option>
+                    <option value="behind" <?php echo $statusFilter == 'behind' ? 'selected' : ''; ?>>Behind</option>
+                </select>
+            </div>
+            <div class="col-md-4 d-flex gap-2">
+                <button type="submit" class="btn btn-primary rounded-pill px-4 flex-grow-1">Apply Filters</button>
+                <a href="indicators.php" class="btn btn-light rounded-pill px-4">Reset</a>
+            </div>
+        </form>
     </div>
 
     <div class="card border-0 overflow-hidden">
@@ -87,8 +159,15 @@ $indicators = $stmt->fetchAll();
                         </td>
                         <td>
                             <div class="d-flex gap-2">
-                                <button class="btn btn-light btn-sm rounded-3"><i class="bi bi-pencil"></i></button>
-                                <button class="btn btn-light btn-sm rounded-3 text-danger"><i class="bi bi-trash"></i></button>
+                                <button class="btn btn-light btn-sm rounded-3" 
+                                        onclick='editIndicator(<?php echo json_encode($ind); ?>)'>
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <form method="POST" onsubmit="return confirm('Are you sure you want to delete this indicator?')">
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="id" value="<?php echo $ind['id']; ?>">
+                                    <button type="submit" class="btn btn-light btn-sm rounded-3 text-danger"><i class="bi bi-trash"></i></button>
+                                </form>
                             </div>
                         </td>
                     </tr>
@@ -151,5 +230,72 @@ $indicators = $stmt->fetchAll();
         </div>
     </div>
 </div>
+
+<!-- Edit Indicator Modal -->
+<div class="modal fade" id="editIndicatorModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow-xl">
+            <div class="modal-header border-0 p-4 pb-0">
+                <h5 class="modal-title fw-bold">Edit Indicator</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST">
+                <input type="hidden" name="action" value="edit">
+                <input type="hidden" name="id" id="edit_id">
+                <div class="modal-body p-4">
+                    <div class="mb-4">
+                        <label class="form-label text-slate-500 x-small fw-bold text-uppercase tracking-widest">Project</label>
+                        <select name="projectId" id="edit_projectId" class="form-select bg-light border-0 rounded-3 p-3" required>
+                            <option value="">Select Project</option>
+                            <?php foreach ($projects as $proj): ?>
+                            <option value="<?php echo $proj['id']; ?>"><?php echo $proj['name']; ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label text-slate-500 x-small fw-bold text-uppercase tracking-widest">Indicator Name</label>
+                        <input type="text" name="name" id="edit_name" class="form-control bg-light border-0 rounded-3 p-3" required>
+                    </div>
+                    <div class="row g-4 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label text-slate-500 x-small fw-bold text-uppercase tracking-widest">Target Value</label>
+                            <input type="number" step="0.01" name="target" id="edit_target" class="form-control bg-light border-0 rounded-3 p-3" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-slate-500 x-small fw-bold text-uppercase tracking-widest">Unit</label>
+                            <input type="text" name="unit" id="edit_unit" class="form-control bg-light border-0 rounded-3 p-3" required>
+                        </div>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label text-slate-500 x-small fw-bold text-uppercase tracking-widest">Category</label>
+                        <select name="category" id="edit_category" class="form-select bg-light border-0 rounded-3 p-3" required>
+                            <option value="Outreach">Outreach</option>
+                            <option value="Capacity Building">Capacity Building</option>
+                            <option value="Accountability">Accountability</option>
+                            <option value="Infrastructure">Infrastructure</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 p-4 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4">Update Indicator</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function editIndicator(ind) {
+    document.getElementById('edit_id').value = ind.id;
+    document.getElementById('edit_projectId').value = ind.projectId;
+    document.getElementById('edit_name').value = ind.name;
+    document.getElementById('edit_target').value = ind.target;
+    document.getElementById('edit_unit').value = ind.unit;
+    document.getElementById('edit_category').value = ind.category;
+    
+    new bootstrap.Modal(document.getElementById('editIndicatorModal')).show();
+}
+</script>
 
 <?php require_once 'footer.php'; ?>

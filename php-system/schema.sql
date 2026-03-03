@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS indicators (
     status ENUM('on-track', 'at-risk', 'behind') DEFAULT 'behind',
     lastUpdated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     geojson TEXT,
+    disaggregation JSON,
     FOREIGN KEY (projectId) REFERENCES projects(id) ON DELETE SET NULL
 );
 

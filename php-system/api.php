@@ -77,10 +77,18 @@ function handleIndicators($method, $db, $id) {
                 $stmt = $db->prepare("SELECT * FROM indicators WHERE id = ?");
                 $stmt->execute([$id]);
                 $result = $stmt->fetch();
+                if ($result && isset($result['disaggregation'])) {
+                    $result['disaggregation'] = json_decode($result['disaggregation'], true);
+                }
             } else {
                 $stmt = $db->prepare("SELECT * FROM indicators");
                 $stmt->execute();
                 $result = $stmt->fetchAll();
+                foreach ($result as &$row) {
+                    if (isset($row['disaggregation'])) {
+                        $row['disaggregation'] = json_decode($row['disaggregation'], true);
+                    }
+                }
             }
             echo json_encode($result);
             break;
@@ -149,6 +157,20 @@ function handleMonitoring($method, $db, $id) {
                 
                 $stmt = $db->prepare("UPDATE indicators SET actual = actual + ? WHERE id = ?");
                 $stmt->execute([$data->value, $data->indicatorId]);
+                
+                // Update indicator disaggregation
+                if (isset($data->disaggregation)) {
+                    $stmt = $db->prepare("SELECT disaggregation FROM indicators WHERE id = ?");
+                    $stmt->execute([$data->indicatorId]);
+                    $currentDis = json_decode($stmt->fetchColumn() ?: '{}', true);
+                    
+                    foreach ($data->disaggregation as $key => $val) {
+                        $currentDis[$key] = ($currentDis[$key] ?? 0) + $val;
+                    }
+                    
+                    $stmt = $db->prepare("UPDATE indicators SET disaggregation = ? WHERE id = ?");
+                    $stmt->execute([json_encode($currentDis), $data->indicatorId]);
+                }
                 
                 recalculateIndicator($db, $data->indicatorId);
                 $db->commit();
