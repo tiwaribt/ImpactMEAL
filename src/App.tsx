@@ -7,8 +7,9 @@ import { Reporting } from './components/Reporting';
 import { IndicatorStatus } from './components/IndicatorStatus';
 import { GISView } from './components/GISView';
 import { DataImport } from './components/DataImport';
+import { DataManagement } from './components/DataManagement';
 import { Indicator, MonitoringEntry, QualitativeFeedback } from './types';
-import { Bell, Search, User, Sparkles, AlertCircle, Download, Loader2 } from 'lucide-react';
+import { Bell, Search, User, Sparkles, AlertCircle, Download, Loader2, Database } from 'lucide-react';
 import { generateInfographicPDF } from './utils/exportUtils';
 
 export default function App() {
@@ -47,6 +48,34 @@ export default function App() {
     }
   };
 
+  const handleAddIndicator = async (newInd: any) => {
+    const ind = {
+      id: Math.random().toString(36).substr(2, 9),
+      ...newInd
+    };
+    await fetch('/api/indicators', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(ind)
+    });
+    await fetchData();
+  };
+
+  const handleUpdateIndicator = async (id: string, update: any) => {
+    await fetch(`/api/indicators/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(update)
+    });
+    await fetchData();
+  };
+
+  const handleDeleteIndicator = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this indicator? All associated data will be lost.')) return;
+    await fetch(`/api/indicators/${id}`, { method: 'DELETE' });
+    await fetchData();
+  };
+
   const handleAddEntry = async (newEntry: Omit<MonitoringEntry, 'id'>) => {
     const entry = {
       id: Math.random().toString(36).substr(2, 9),
@@ -59,17 +88,30 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(entry)
       });
-      await fetchData(); // Refresh all data to get updated indicator status
+      await fetchData();
     } catch (error) {
       console.error("Failed to add entry:", error);
     }
   };
 
+  const handleUpdateEntry = async (id: string, update: any) => {
+    await fetch(`/api/monitoring/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(update)
+    });
+    await fetchData();
+  };
+
+  const handleDeleteEntry = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this entry?')) return;
+    await fetch(`/api/monitoring/${id}`, { method: 'DELETE' });
+    await fetchData();
+  };
+
   const handleBulkImport = async (newEntries: Omit<MonitoringEntry, 'id'>[]) => {
     setIsLoading(true);
     try {
-      // For simplicity, we'll send them one by one or implement a bulk endpoint
-      // Here we'll just do them in sequence for now
       for (const entry of newEntries) {
         await fetch('/api/monitoring', {
           method: 'POST',
@@ -131,8 +173,20 @@ export default function App() {
         return <Qualitative feedback={feedback} onAddFeedback={handleAddFeedback} />;
       case 'reporting':
         return <Reporting indicators={indicators} feedback={feedback} />;
-      case 'import':
-        return <DataImport indicators={indicators} onImport={handleBulkImport} />;
+      case 'management':
+        return (
+          <DataManagement 
+            indicators={indicators} 
+            entries={entries}
+            onAddIndicator={handleAddIndicator}
+            onUpdateIndicator={handleUpdateIndicator}
+            onDeleteIndicator={handleDeleteIndicator}
+            onAddEntry={handleAddEntry}
+            onUpdateEntry={handleUpdateEntry}
+            onDeleteEntry={handleDeleteEntry}
+            onBulkImport={handleBulkImport}
+          />
+        );
       default:
         return <Dashboard indicators={indicators} entries={entries} />;
     }

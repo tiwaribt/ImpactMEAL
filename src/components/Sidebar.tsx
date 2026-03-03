@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, ClipboardList, MessageSquare, FileText, Settings, LogOut, Sparkles, Map as MapIcon, Target, Upload } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, MessageSquare, FileText, Settings, LogOut, Sparkles, Map as MapIcon, Target, Upload, Database } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: string;
@@ -12,9 +12,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
     { id: 'monitoring', label: 'Monitoring', icon: ClipboardList },
     { id: 'status', label: 'Indicator Status', icon: Target },
     { id: 'gis', label: 'GIS Reporting', icon: MapIcon },
+    { id: 'management', label: 'Data Management', icon: Database },
     { id: 'qualitative', label: 'Qualitative', icon: MessageSquare },
     { id: 'reporting', label: 'Reporting', icon: FileText },
-    { id: 'import', label: 'Data Import', icon: Upload },
   ];
 
   return (

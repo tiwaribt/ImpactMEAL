@@ -76,6 +76,45 @@ async function startServer() {
     })));
   });
 
+  app.post('/api/indicators', (req, res) => {
+    const { id, name, target, unit, category } = req.body;
+    const insert = db.prepare(`
+      INSERT INTO indicators (id, name, target, unit, category, actual, achievedPercentage, gap, status)
+      VALUES (?, ?, ?, ?, ?, 0, 0, ?, 'behind')
+    `);
+    insert.run(id, name, target, unit, category, target);
+    res.json({ status: 'success' });
+  });
+
+  app.put('/api/indicators/:id', (req, res) => {
+    const { id } = req.params;
+    const { name, target, unit, category } = req.body;
+    
+    const update = db.prepare(`
+      UPDATE indicators 
+      SET name = ?, target = ?, unit = ?, category = ?
+      WHERE id = ?
+    `);
+    update.run(name, target, unit, category, id);
+
+    // Recalculate achievement for this indicator
+    const ind = db.prepare('SELECT * FROM indicators WHERE id = ?').get() as any;
+    const newAchieved = Math.round((ind.actual / ind.target) * 100);
+    const newGap = ind.target - ind.actual;
+    const newStatus = newAchieved >= 90 ? 'on-track' : newAchieved >= 70 ? 'at-risk' : 'behind';
+    
+    db.prepare('UPDATE indicators SET achievedPercentage = ?, gap = ?, status = ? WHERE id = ?')
+      .run(newAchieved, newGap, newStatus, id);
+
+    res.json({ status: 'success' });
+  });
+
+  app.delete('/api/indicators/:id', (req, res) => {
+    const { id } = req.params;
+    db.prepare('DELETE FROM indicators WHERE id = ?').run(id);
+    res.json({ status: 'success' });
+  });
+
   app.post('/api/monitoring', (req, res) => {
     const { id, indicatorId, date, value, location, notes, latitude, longitude } = req.body;
     
@@ -103,6 +142,58 @@ async function startServer() {
       
       db.prepare('UPDATE indicators SET achievedPercentage = ?, gap = ?, status = ? WHERE id = ?')
         .run(newAchieved, newGap, newStatus, indicatorId);
+    });
+
+    transaction();
+    res.json({ status: 'success' });
+  });
+
+  app.put('/api/monitoring/:id', (req, res) => {
+    const { id } = req.params;
+    const { value, date, location, notes, indicatorId } = req.body;
+
+    const oldEntry = db.prepare('SELECT * FROM monitoring_entries WHERE id = ?').get() as any;
+    const diff = value - oldEntry.value;
+
+    const transaction = db.transaction(() => {
+      db.prepare(`
+        UPDATE monitoring_entries 
+        SET value = ?, date = ?, location = ?, notes = ?
+        WHERE id = ?
+      `).run(value, date, location, notes, id);
+
+      db.prepare('UPDATE indicators SET actual = actual + ? WHERE id = ?').run(diff, indicatorId);
+
+      // Recalculate achievement and status
+      const ind = db.prepare('SELECT * FROM indicators WHERE id = ?').get() as any;
+      const newAchieved = Math.round((ind.actual / ind.target) * 100);
+      const newGap = ind.target - ind.actual;
+      const newStatus = newAchieved >= 90 ? 'on-track' : newAchieved >= 70 ? 'at-risk' : 'behind';
+      
+      db.prepare('UPDATE indicators SET achievedPercentage = ?, gap = ?, status = ? WHERE id = ?')
+        .run(newAchieved, newGap, newStatus, indicatorId);
+    });
+
+    transaction();
+    res.json({ status: 'success' });
+  });
+
+  app.delete('/api/monitoring/:id', (req, res) => {
+    const { id } = req.params;
+    const entry = db.prepare('SELECT * FROM monitoring_entries WHERE id = ?').get() as any;
+    
+    const transaction = db.transaction(() => {
+      db.prepare('UPDATE indicators SET actual = actual - ? WHERE id = ?').run(entry.value, entry.indicatorId);
+      db.prepare('DELETE FROM monitoring_entries WHERE id = ?').run(id);
+
+      // Recalculate achievement and status
+      const ind = db.prepare('SELECT * FROM indicators WHERE id = ?').get() as any;
+      const newAchieved = Math.round((ind.actual / ind.target) * 100);
+      const newGap = ind.target - ind.actual;
+      const newStatus = newAchieved >= 90 ? 'on-track' : newAchieved >= 70 ? 'at-risk' : 'behind';
+      
+      db.prepare('UPDATE indicators SET achievedPercentage = ?, gap = ?, status = ? WHERE id = ?')
+        .run(newAchieved, newGap, newStatus, entry.indicatorId);
     });
 
     transaction();

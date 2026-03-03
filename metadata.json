@@ -1,5 +1,5 @@
 {
-  "name": "ImpactMEAL Dashboard",
-  "description": "A comprehensive Monitoring, Evaluation, Accountability, and Learning (MEAL) dashboard for tracking program impact through quantitative metrics and AI-powered qualitative analysis.",
+  "name": "Impact MEAL",
+  "description": "A comprehensive Monitoring, Evaluation, Accountability, and Learning (MEAL) system for impact tracking and reporting.",
   "requestFramePermissions": []
 }
