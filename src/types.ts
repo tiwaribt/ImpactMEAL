@@ -5,6 +5,7 @@ export enum IndicatorType {
 
 export interface Indicator {
   id: string;
+  projectId?: string;
   name: string;
   target: number;
   actual: number;
@@ -16,6 +17,12 @@ export interface Indicator {
   achievedPercentage: number;
   lastUpdated: string;
   geojson?: any; // For GIS reporting
+  disaggregation?: {
+    male?: number;
+    female?: number;
+    youth?: number;
+    other?: number;
+  };
 }
 
 export interface MonitoringEntry {
@@ -26,6 +33,19 @@ export interface MonitoringEntry {
   location: string;
   notes?: string;
   coordinates?: [number, number]; // [lat, lng]
+  disaggregation?: {
+    male?: number;
+    female?: number;
+    youth?: number;
+    other?: number;
+  };
+}
+
+export interface User {
+  id: string;
+  username: string;
+  email: string;
+  role: 'admin' | 'meal_officer' | 'viewer';
 }
 
 export interface QualitativeFeedback {

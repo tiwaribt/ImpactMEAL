@@ -8,8 +8,9 @@ import { IndicatorStatus } from './components/IndicatorStatus';
 import { GISView } from './components/GISView';
 import { DataImport } from './components/DataImport';
 import { DataManagement } from './components/DataManagement';
-import { Indicator, MonitoringEntry, QualitativeFeedback } from './types';
-import { Bell, Search, User, Sparkles, AlertCircle, Download, Loader2, Database } from 'lucide-react';
+import { Login } from './components/Login';
+import { Indicator, MonitoringEntry, QualitativeFeedback, User as UserType } from './types';
+import { Bell, Search, User, Sparkles, AlertCircle, Download, Loader2, Database, LogOut } from 'lucide-react';
 import { generateInfographicPDF } from './utils/exportUtils';
 
 export default function App() {
@@ -17,30 +18,37 @@ export default function App() {
   const [indicators, setIndicators] = useState<Indicator[]>([]);
   const [entries, setEntries] = useState<MonitoringEntry[]>([]);
   const [feedback, setFeedback] = useState<QualitativeFeedback[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<UserType | null>(null);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (user) {
+      fetchData();
+    }
+  }, [user]);
 
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [indRes, entRes, feedRes] = await Promise.all([
+      const [indRes, entRes, feedRes, projRes] = await Promise.all([
         fetch('/api/indicators'),
         fetch('/api/monitoring'),
-        fetch('/api/feedback')
+        fetch('/api/feedback'),
+        fetch('/api/projects')
       ]);
       
-      const [inds, ents, feeds] = await Promise.all([
+      const [inds, ents, feeds, projs] = await Promise.all([
         indRes.json(),
         entRes.json(),
-        feedRes.json()
+        feedRes.json(),
+        projRes.json()
       ]);
       
       setIndicators(inds);
       setEntries(ents);
       setFeedback(feeds);
+      setProjects(projs);
     } catch (error) {
       console.error("Failed to fetch data:", error);
     } finally {
@@ -144,6 +152,10 @@ export default function App() {
     }
   };
 
+  if (!user) {
+    return <Login onLogin={setUser} />;
+  }
+
   if (isLoading && indicators.length === 0) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -178,6 +190,7 @@ export default function App() {
           <DataManagement 
             indicators={indicators} 
             entries={entries}
+            projects={projects}
             onAddIndicator={handleAddIndicator}
             onUpdateIndicator={handleUpdateIndicator}
             onDeleteIndicator={handleDeleteIndicator}
@@ -241,11 +254,22 @@ export default function App() {
               <div className="h-8 w-px bg-slate-200"></div>
               <div className="flex items-center gap-3 pl-2">
                 <div className="text-right hidden sm:block">
-                  <p className="text-sm font-bold text-slate-900">Balram</p>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Administrator</p>
+                  <p className="text-sm font-bold text-slate-900">{user.username}</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{user.role}</p>
                 </div>
-                <div className="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center text-white font-bold shadow-lg shadow-indigo-600/20">
-                  BA
+                <div className="group relative">
+                  <div className="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center text-white font-bold shadow-lg shadow-indigo-600/20 cursor-pointer">
+                    {user.username.substring(0, 2).toUpperCase()}
+                  </div>
+                  <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                    <button 
+                      onClick={() => setUser(null)}
+                      className="w-full flex items-center gap-2 px-4 py-3 text-sm text-rose-600 hover:bg-rose-50 transition-colors rounded-xl"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Sign Out
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

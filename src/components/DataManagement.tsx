@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 interface DataManagementProps {
   indicators: Indicator[];
   entries: MonitoringEntry[];
+  projects: any[];
   onAddIndicator: (ind: Omit<Indicator, 'id' | 'actual' | 'achievedPercentage' | 'gap' | 'status' | 'lastUpdated'>) => Promise<void>;
   onUpdateIndicator: (id: string, ind: Partial<Indicator>) => Promise<void>;
   onDeleteIndicator: (id: string) => Promise<void>;
@@ -22,6 +23,7 @@ interface DataManagementProps {
 export const DataManagement: React.FC<DataManagementProps> = ({
   indicators,
   entries,
+  projects,
   onAddIndicator,
   onUpdateIndicator,
   onDeleteIndicator,
@@ -148,8 +150,16 @@ export const DataManagement: React.FC<DataManagementProps> = ({
               {editingId === 'new' && (
                 <tr className="bg-indigo-50/30">
                   <td className="px-6 py-4">
-                    <input 
+                    <select 
                       className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm"
+                      value={editForm.projectId}
+                      onChange={(e) => setEditForm({...editForm, projectId: e.target.value})}
+                    >
+                      <option value="">Select Project</option>
+                      {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                    <input 
+                      className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm mt-2"
                       value={editForm.name}
                       onChange={(e) => setEditForm({...editForm, name: e.target.value})}
                       placeholder="Indicator Name"
@@ -193,8 +203,16 @@ export const DataManagement: React.FC<DataManagementProps> = ({
                   {editingId === ind.id ? (
                     <>
                       <td className="px-6 py-4">
-                        <input 
+                        <select 
                           className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm"
+                          value={editForm.projectId}
+                          onChange={(e) => setEditForm({...editForm, projectId: e.target.value})}
+                        >
+                          <option value="">Select Project</option>
+                          {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                        </select>
+                        <input 
+                          className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm mt-2"
                           value={editForm.name}
                           onChange={(e) => setEditForm({...editForm, name: e.target.value})}
                         />
@@ -232,7 +250,12 @@ export const DataManagement: React.FC<DataManagementProps> = ({
                     </>
                   ) : (
                     <>
-                      <td className="px-6 py-4 text-sm font-medium text-slate-900">{ind.name}</td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-medium text-slate-900">{ind.name}</div>
+                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
+                          {projects.find(p => p.id === ind.projectId)?.name || 'No Project'}
+                        </div>
+                      </td>
                       <td className="px-6 py-4">
                         <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-bold uppercase tracking-wider">
                           {ind.category}
@@ -288,6 +311,22 @@ export const DataManagement: React.FC<DataManagementProps> = ({
                       value={editForm.value}
                       onChange={(e) => setEditForm({...editForm, value: parseFloat(e.target.value)})}
                     />
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      <input 
+                        type="number" 
+                        placeholder="M" 
+                        className="px-2 py-1 text-[10px] border rounded"
+                        value={editForm.disaggregation?.male || ''}
+                        onChange={(e) => setEditForm({...editForm, disaggregation: { ...editForm.disaggregation, male: parseFloat(e.target.value) }})}
+                      />
+                      <input 
+                        type="number" 
+                        placeholder="F" 
+                        className="px-2 py-1 text-[10px] border rounded"
+                        value={editForm.disaggregation?.female || ''}
+                        onChange={(e) => setEditForm({...editForm, disaggregation: { ...editForm.disaggregation, female: parseFloat(e.target.value) }})}
+                      />
+                    </div>
                   </td>
                   <td className="px-6 py-4">
                     <input 
@@ -333,6 +372,22 @@ export const DataManagement: React.FC<DataManagementProps> = ({
                             value={editForm.value}
                             onChange={(e) => setEditForm({...editForm, value: parseFloat(e.target.value)})}
                           />
+                          <div className="mt-2 grid grid-cols-2 gap-2">
+                            <input 
+                              type="number" 
+                              placeholder="M" 
+                              className="px-2 py-1 text-[10px] border rounded"
+                              value={editForm.disaggregation?.male || ''}
+                              onChange={(e) => setEditForm({...editForm, disaggregation: { ...editForm.disaggregation, male: parseFloat(e.target.value) }})}
+                            />
+                            <input 
+                              type="number" 
+                              placeholder="F" 
+                              className="px-2 py-1 text-[10px] border rounded"
+                              value={editForm.disaggregation?.female || ''}
+                              onChange={(e) => setEditForm({...editForm, disaggregation: { ...editForm.disaggregation, female: parseFloat(e.target.value) }})}
+                            />
+                          </div>
                         </td>
                         <td className="px-6 py-4">
                           <input 

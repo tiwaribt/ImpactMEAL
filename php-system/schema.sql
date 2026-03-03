@@ -2,9 +2,21 @@
 CREATE DATABASE IF NOT EXISTS impact_meal;
 USE impact_meal;
 
+-- Projects table
+CREATE TABLE IF NOT EXISTS projects (
+    id VARCHAR(50) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    startDate DATE,
+    endDate DATE,
+    status ENUM('active', 'completed', 'on-hold') DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Indicators table
 CREATE TABLE IF NOT EXISTS indicators (
     id VARCHAR(50) PRIMARY KEY,
+    projectId VARCHAR(50),
     name VARCHAR(255) NOT NULL,
     target DECIMAL(15, 2) NOT NULL,
     unit VARCHAR(50) NOT NULL,
@@ -14,7 +26,8 @@ CREATE TABLE IF NOT EXISTS indicators (
     gap DECIMAL(15, 2) DEFAULT 0,
     status ENUM('on-track', 'at-risk', 'behind') DEFAULT 'behind',
     lastUpdated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    geojson TEXT
+    geojson TEXT,
+    FOREIGN KEY (projectId) REFERENCES projects(id) ON DELETE SET NULL
 );
 
 -- Monitoring entries table
@@ -27,6 +40,7 @@ CREATE TABLE IF NOT EXISTS monitoring_entries (
     notes TEXT,
     latitude DECIMAL(10, 8),
     longitude DECIMAL(11, 8),
+    disaggregation JSON,
     FOREIGN KEY (indicatorId) REFERENCES indicators(id) ON DELETE CASCADE
 );
 

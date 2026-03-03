@@ -104,6 +104,32 @@ export const IndicatorStatus: React.FC<IndicatorStatusProps> = ({ indicators }) 
                       </p>
                     </div>
                   </div>
+
+                  {ind.disaggregation && (
+                    <div className="mt-4 flex gap-4">
+                      {ind.disaggregation.male !== undefined && (
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                          <span className="text-slate-500">Male:</span>
+                          <span className="font-bold text-slate-900">{ind.disaggregation.male}</span>
+                        </div>
+                      )}
+                      {ind.disaggregation.female !== undefined && (
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="w-2 h-2 rounded-full bg-pink-500"></span>
+                          <span className="text-slate-500">Female:</span>
+                          <span className="font-bold text-slate-900">{ind.disaggregation.female}</span>
+                        </div>
+                      )}
+                      {ind.disaggregation.youth !== undefined && (
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+                          <span className="text-slate-500">Youth:</span>
+                          <span className="font-bold text-slate-900">{ind.disaggregation.youth}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="lg:w-72 space-y-4">

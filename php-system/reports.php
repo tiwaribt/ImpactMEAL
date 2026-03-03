@@ -1,131 +1,110 @@
 <?php
-require_once 'db.php';
-$database = new Database();
-$db = $database->getConnection();
+require_once 'header.php';
+require_once 'sidebar.php';
 
-// Fetch Indicators for reports
-$stmt = $db->prepare("SELECT * FROM indicators");
+// Fetch Projects for dropdown
+$stmt = $db->prepare("SELECT id, name FROM projects");
+$stmt->execute();
+$projects = $stmt->fetchAll();
+
+// Fetch Indicators for dropdown
+$stmt = $db->prepare("SELECT id, name FROM indicators");
 $stmt->execute();
 $indicators = $stmt->fetchAll();
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Impact MEAL - Reports</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-    <style>
-        body { background-color: #f8fafc; font-family: 'Inter', sans-serif; }
-        .sidebar { height: 100vh; background-color: #0f172a; color: #94a3b8; }
-        .nav-link { color: #94a3b8; border-radius: 8px; margin-bottom: 4px; }
-        .nav-link.active { background-color: #4f46e5; color: white; }
-        .card { border-radius: 16px; border: none; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .report-preview { background-color: white; padding: 40px; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); min-height: 800px; }
-    </style>
-</head>
-<body>
-    <div class="container-fluid">
-        <div class="row">
-            <!-- Sidebar -->
-            <div class="col-md-2 sidebar p-4 d-none d-md-block">
-                <div class="d-flex align-items-center gap-2 mb-5">
-                    <div class="p-2 bg-primary rounded-3">
-                        <i class="bi bi-stars text-white"></i>
-                    </div>
-                    <h4 class="text-white mb-0">Impact MEAL</h4>
-                </div>
-                <nav class="nav flex-column">
-                    <a class="nav-link" href="index.php"><i class="bi bi-speedometer2 me-2"></i> Dashboard</a>
-                    <a class="nav-link" href="indicators.php"><i class="bi bi-target me-2"></i> Indicators</a>
-                    <a class="nav-link" href="monitoring.php"><i class="bi bi-clipboard-data me-2"></i> Monitoring</a>
-                    <a class="nav-link" href="gis.php"><i class="bi bi-map me-2"></i> GIS View</a>
-                    <a class="nav-link active" href="reports.php"><i class="bi bi-file-earmark-text me-2"></i> Reports</a>
-                </nav>
-            </div>
 
-            <!-- Main Content -->
-            <div class="col-md-10 p-5">
+<div class="main-content">
+    <div class="d-flex justify-content-between align-items-center mb-5">
+        <div>
+            <h2 class="fw-bold text-slate-900 mb-1">Donor & Custom Reporting</h2>
+            <p class="text-slate-500 small mb-0">Generate and export project performance reports</p>
+        </div>
+        <div class="d-flex gap-3">
+            <button class="btn btn-white border rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#uploadTemplateModal">
+                <i class="bi bi-upload me-2"></i> Upload Template
+            </button>
+            <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#generateReportModal">
+                <i class="bi bi-file-earmark-text me-2"></i> Generate Report
+            </button>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-5">
+        <!-- Donor Templates -->
+        <div class="col-md-6">
+            <div class="card h-100 p-4">
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h2 class="fw-bold">Reporting Module</h2>
-                    <div class="btn-group">
-                        <button class="btn btn-white border rounded-pill px-4 me-2" onclick="exportPDF()"><i class="bi bi-file-pdf me-2"></i> Export PDF</button>
-                        <button class="btn btn-primary rounded-pill px-4"><i class="bi bi-plus-lg me-2"></i> Generate AI Report</button>
+                    <h5 class="fw-bold mb-0">Donor Templates</h5>
+                    <span class="badge badge-pill bg-primary bg-opacity-10 text-primary">Standard</span>
+                </div>
+                <div class="space-y-4">
+                    <div class="d-flex align-items-center justify-content-between p-3 rounded-4 bg-light border border-slate-100 hover-bg-white transition-all">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="w-10 h-10 bg-white rounded-3 d-flex align-items-center justify-center shadow-sm">
+                                <i class="bi bi-file-earmark-spreadsheet text-success fs-5"></i>
+                            </div>
+                            <div>
+                                <p class="mb-0 small fw-bold text-slate-900">USAID Standard Report</p>
+                                <p class="mb-0 x-small text-slate-500">XLSX • Quarterly Performance</p>
+                            </div>
+                        </div>
+                        <button class="btn btn-light btn-sm rounded-pill px-3 fw-bold x-small">DOWNLOAD</button>
+                    </div>
+                    <div class="d-flex align-items-center justify-content-between p-3 rounded-4 bg-light border border-slate-100 hover-bg-white transition-all">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="w-10 h-10 bg-white rounded-3 d-flex align-items-center justify-center shadow-sm">
+                                <i class="bi bi-file-earmark-spreadsheet text-success fs-5"></i>
+                            </div>
+                            <div>
+                                <p class="mb-0 small fw-bold text-slate-900">UNICEF Monitoring Framework</p>
+                                <p class="mb-0 x-small text-slate-500">XLSX • Monthly Update</p>
+                            </div>
+                        </div>
+                        <button class="btn btn-light btn-sm rounded-pill px-3 fw-bold x-small">DOWNLOAD</button>
+                    </div>
+                    <div class="d-flex align-items-center justify-content-between p-3 rounded-4 bg-light border border-slate-100 hover-bg-white transition-all">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="w-10 h-10 bg-white rounded-3 d-flex align-items-center justify-center shadow-sm">
+                                <i class="bi bi-file-earmark-spreadsheet text-success fs-5"></i>
+                            </div>
+                            <div>
+                                <p class="mb-0 small fw-bold text-slate-900">EU Development Fund Template</p>
+                                <p class="mb-0 x-small text-slate-500">XLSX • Annual Review</p>
+                            </div>
+                        </div>
+                        <button class="btn btn-light btn-sm rounded-pill px-3 fw-bold x-small">DOWNLOAD</button>
                     </div>
                 </div>
+            </div>
+        </div>
 
-                <div class="row">
-                    <div class="col-md-8">
-                        <div class="report-preview" id="reportContent">
-                            <div class="text-center mb-5">
-                                <h3 class="fw-bold mb-1">Impact MEAL - Status Report</h3>
-                                <p class="text-muted">Generated on <?php echo date('M d, Y'); ?></p>
+        <!-- Custom Templates -->
+        <div class="col-md-6">
+            <div class="card h-100 p-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="fw-bold mb-0">Custom Templates</h5>
+                    <span class="badge badge-pill bg-indigo-50 text-indigo-600">User Uploaded</span>
+                </div>
+                <div class="space-y-4">
+                    <div class="d-flex align-items-center justify-content-between p-3 rounded-4 bg-light border border-slate-100 hover-bg-white transition-all">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="w-10 h-10 bg-white rounded-3 d-flex align-items-center justify-center shadow-sm">
+                                <i class="bi bi-file-earmark-spreadsheet text-primary fs-5"></i>
                             </div>
-
-                            <h5 class="fw-bold mb-4 border-bottom pb-2">1. Indicator Performance Summary</h5>
-                            <table class="table table-bordered mb-5" id="reportTable">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Indicator</th>
-                                        <th>Target</th>
-                                        <th>Actual</th>
-                                        <th>% Achieved</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($indicators as $ind): ?>
-                                    <tr>
-                                        <td><?php echo $ind['name']; ?></td>
-                                        <td><?php echo $ind['target']; ?></td>
-                                        <td><?php echo $ind['actual']; ?></td>
-                                        <td><?php echo $ind['achievedPercentage']; ?>%</td>
-                                        <td><?php echo strtoupper(str_replace('-', ' ', $ind['status'])); ?></td>
-                                    </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-
-                            <h5 class="fw-bold mb-4 border-bottom pb-2">2. Key Insights & Analysis</h5>
-                            <p class="text-muted mb-4">
-                                Based on the current monitoring data, the program is showing significant progress in outreach activities. 
-                                However, capacity building indicators are currently flagged as "At Risk" due to delays in training sessions.
-                            </p>
-
-                            <h5 class="fw-bold mb-4 border-bottom pb-2">3. Recommendations</h5>
-                            <ul class="text-muted">
-                                <li>Accelerate training schedules for the next quarter.</li>
-                                <li>Conduct a mid-term review for indicators currently behind target.</li>
-                                <li>Enhance data collection frequency in remote locations.</li>
-                            </ul>
+                            <div>
+                                <p class="mb-0 small fw-bold text-slate-900">Internal Monthly Dashboard</p>
+                                <p class="mb-0 x-small text-slate-500">XLSX • Uploaded by Admin</p>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-light btn-sm rounded-circle"><i class="bi bi-download"></i></button>
+                            <button class="btn btn-light btn-sm rounded-circle text-danger"><i class="bi bi-trash"></i></button>
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="card p-4">
-                            <h5 class="fw-bold mb-4">Report Settings</h5>
-                            <div class="mb-3">
-                                <label class="form-label">Report Type</label>
-                                <select class="form-select">
-                                    <option>Monthly Status Report</option>
-                                    <option>Quarterly Impact Assessment</option>
-                                    <option>Annual MEAL Summary</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Date Range</label>
-                                <div class="input-group">
-                                    <input type="date" class="form-control">
-                                    <input type="date" class="form-control">
-                                </div>
-                            </div>
-                            <div class="form-check mb-4">
-                                <input class="form-check-input" type="checkbox" checked>
-                                <label class="form-check-label">Include GIS Data</label>
-                            </div>
-                            <button class="btn btn-primary w-full py-2 rounded-xl">Update Preview</button>
+                    <div class="d-flex align-items-center justify-content-center p-5 rounded-4 border-2 border-dashed border-slate-200 bg-slate-50">
+                        <div class="text-center">
+                            <i class="bi bi-cloud-upload text-slate-300 fs-1 mb-2"></i>
+                            <p class="text-slate-400 small mb-0">Drag and drop custom XLSX templates here</p>
                         </div>
                     </div>
                 </div>
@@ -133,26 +112,102 @@ $indicators = $stmt->fetchAll();
         </div>
     </div>
 
-    <script>
-        function exportPDF() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            
-            doc.setFontSize(20);
-            doc.text("Impact MEAL - Status Report", 105, 20, { align: "center" });
-            
-            doc.setFontSize(10);
-            doc.text(`Generated on ${new Date().toLocaleDateString()}`, 105, 28, { align: "center" });
-            
-            doc.autoTable({
-                html: '#reportTable',
-                startY: 40,
-                theme: 'grid',
-                headStyles: { fillColor: [79, 70, 229] }
-            });
-            
-            doc.save("ImpactMEAL_Report.pdf");
-        }
-    </script>
-</body>
-</html>
+    <!-- Recent Reports -->
+    <div class="card border-0 overflow-hidden">
+        <div class="p-4 border-bottom border-slate-100 d-flex justify-content-between align-items-center">
+            <h5 class="fw-bold mb-0">Generated Reports History</h5>
+            <div class="input-group w-auto">
+                <span class="input-group-text bg-light border-0"><i class="bi bi-search text-slate-400"></i></span>
+                <input type="text" class="form-control bg-light border-0 small" placeholder="Search reports...">
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table mb-0">
+                <thead>
+                    <tr>
+                        <th>Report Name</th>
+                        <th>Project</th>
+                        <th>Type</th>
+                        <th>Generated By</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="fw-bold text-slate-900">Q1 Performance Summary</td>
+                        <td>Youth Empowerment</td>
+                        <td><span class="badge badge-pill bg-indigo-50 text-indigo-600">Quarterly</span></td>
+                        <td>Admin</td>
+                        <td class="small text-slate-500">Oct 24, 2023</td>
+                        <td><span class="badge badge-pill bg-success bg-opacity-10 text-success">Completed</span></td>
+                        <td>
+                            <button class="btn btn-light btn-sm rounded-3"><i class="bi bi-download"></i></button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="fw-bold text-slate-900">Monthly Monitoring Update</td>
+                        <td>Community Health</td>
+                        <td><span class="badge badge-pill bg-blue-50 text-blue-600">Monthly</span></td>
+                        <td>MEAL Officer</td>
+                        <td class="small text-slate-500">Oct 20, 2023</td>
+                        <td><span class="badge badge-pill bg-success bg-opacity-10 text-success">Completed</span></td>
+                        <td>
+                            <button class="btn btn-light btn-sm rounded-3"><i class="bi bi-download"></i></button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Generate Report Modal -->
+<div class="modal fade" id="generateReportModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow-xl">
+            <div class="modal-header border-0 p-4 pb-0">
+                <h5 class="modal-title fw-bold">Generate New Report</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="api.php?action=generate_report" method="POST">
+                <div class="modal-body p-4">
+                    <div class="mb-4">
+                        <label class="form-label text-slate-500 x-small fw-bold text-uppercase tracking-widest">Project</label>
+                        <select name="projectId" class="form-select bg-light border-0 rounded-3 p-3" required>
+                            <option value="all">All Projects</option>
+                            <?php foreach ($projects as $proj): ?>
+                            <option value="<?php echo $proj['id']; ?>"><?php echo $proj['name']; ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label text-slate-500 x-small fw-bold text-uppercase tracking-widest">Template Type</label>
+                        <select name="template" class="form-select bg-light border-0 rounded-3 p-3" required>
+                            <option value="usaid">USAID Standard</option>
+                            <option value="unicef">UNICEF Monitoring</option>
+                            <option value="internal">Internal Dashboard</option>
+                        </select>
+                    </div>
+                    <div class="row g-4 mb-0">
+                        <div class="col-md-6">
+                            <label class="form-label text-slate-500 x-small fw-bold text-uppercase tracking-widest">Start Date</label>
+                            <input type="date" name="startDate" class="form-control bg-light border-0 rounded-3 p-3" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-slate-500 x-small fw-bold text-uppercase tracking-widest">End Date</label>
+                            <input type="date" name="endDate" class="form-control bg-light border-0 rounded-3 p-3" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 p-4 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4">Generate XLSX</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<?php require_once 'footer.php'; ?>

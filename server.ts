@@ -14,8 +14,18 @@ async function startServer() {
 
   // Initialize Database
   db.exec(`
+    CREATE TABLE IF NOT EXISTS projects (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      startDate TEXT,
+      endDate TEXT,
+      status TEXT DEFAULT 'active'
+    );
+
     CREATE TABLE IF NOT EXISTS indicators (
       id TEXT PRIMARY KEY,
+      projectId TEXT,
       name TEXT NOT NULL,
       target REAL NOT NULL,
       actual REAL DEFAULT 0,
@@ -26,7 +36,8 @@ async function startServer() {
       gap REAL DEFAULT 0,
       achievedPercentage REAL DEFAULT 0,
       lastUpdated TEXT DEFAULT CURRENT_TIMESTAMP,
-      geojson TEXT
+      geojson TEXT,
+      FOREIGN KEY (projectId) REFERENCES projects(id) ON DELETE CASCADE
     );
 
     CREATE TABLE IF NOT EXISTS monitoring_entries (
@@ -38,7 +49,16 @@ async function startServer() {
       notes TEXT,
       latitude REAL,
       longitude REAL,
+      disaggregation TEXT,
       FOREIGN KEY (indicatorId) REFERENCES indicators(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      username TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      role TEXT DEFAULT 'viewer'
     );
 
     CREATE TABLE IF NOT EXISTS qualitative_feedback (
@@ -55,19 +75,33 @@ async function startServer() {
   // Seed initial data if empty
   const count = db.prepare('SELECT count(*) as count FROM indicators').get() as { count: number };
   if (count.count === 0) {
+    db.prepare("INSERT INTO projects (id, name, description) VALUES (?, ?, ?)").run('p1', 'Youth Empowerment Program', 'Focusing on skills and employment');
+    
     const insert = db.prepare(`
-      INSERT INTO indicators (id, name, target, actual, unit, category, trend, status, gap, achievedPercentage) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO indicators (id, projectId, name, target, actual, unit, category, trend, status, gap, achievedPercentage) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
-    insert.run('1', 'Number of beneficiaries reached', 5000, 4250, 'people', 'Outreach', 'up', 'on-track', 750, 85);
-    insert.run('2', 'Training completion rate', 95, 88, '%', 'Capacity Building', 'stable', 'at-risk', 7, 92.6);
-    insert.run('3', 'Community satisfaction index', 4.5, 4.2, '/5', 'Accountability', 'up', 'on-track', 0.3, 93.3);
-    insert.run('4', 'Average response time to feedback', 48, 36, 'hours', 'Accountability', 'down', 'on-track', -12, 125);
+    insert.run('1', 'p1', 'Number of beneficiaries reached', 5000, 4250, 'people', 'Outreach', 'up', 'on-track', 750, 85);
+    insert.run('2', 'p1', 'Training completion rate', 95, 88, '%', 'Capacity Building', 'stable', 'at-risk', 7, 92.6);
+    insert.run('3', 'p1', 'Community satisfaction index', 4.5, 4.2, '/5', 'Accountability', 'up', 'on-track', 0.3, 93.3);
+    insert.run('4', 'p1', 'Average response time to feedback', 48, 36, 'hours', 'Accountability', 'down', 'on-track', -12, 125);
   }
 
   app.use(express.json());
 
   // API Routes
+  app.get('/api/projects', (req, res) => {
+    const projects = db.prepare('SELECT * FROM projects').all();
+    res.json(projects);
+  });
+
+  app.post('/api/projects', (req, res) => {
+    const { id, name, description, startDate, endDate } = req.body;
+    db.prepare('INSERT INTO projects (id, name, description, startDate, endDate) VALUES (?, ?, ?, ?, ?)')
+      .run(id, name, description, startDate, endDate);
+    res.json({ status: 'success' });
+  });
+
   app.get('/api/indicators', (req, res) => {
     const indicators = db.prepare('SELECT * FROM indicators').all();
     res.json(indicators.map((ind: any) => ({
@@ -116,11 +150,11 @@ async function startServer() {
   });
 
   app.post('/api/monitoring', (req, res) => {
-    const { id, indicatorId, date, value, location, notes, latitude, longitude } = req.body;
+    const { id, indicatorId, date, value, location, notes, latitude, longitude, disaggregation } = req.body;
     
     const insert = db.prepare(`
-      INSERT INTO monitoring_entries (id, indicatorId, date, value, location, notes, latitude, longitude)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO monitoring_entries (id, indicatorId, date, value, location, notes, latitude, longitude, disaggregation)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     
     const updateIndicator = db.prepare(`
@@ -131,7 +165,7 @@ async function startServer() {
     `);
 
     const transaction = db.transaction(() => {
-      insert.run(id, indicatorId, date, value, location, notes, latitude, longitude);
+      insert.run(id, indicatorId, date, value, location, notes, latitude, longitude, JSON.stringify(disaggregation));
       updateIndicator.run(value, indicatorId);
       
       // Recalculate achievement and status
@@ -150,7 +184,7 @@ async function startServer() {
 
   app.put('/api/monitoring/:id', (req, res) => {
     const { id } = req.params;
-    const { value, date, location, notes, indicatorId } = req.body;
+    const { value, date, location, notes, indicatorId, disaggregation } = req.body;
 
     const oldEntry = db.prepare('SELECT * FROM monitoring_entries WHERE id = ?').get() as any;
     const diff = value - oldEntry.value;
@@ -158,9 +192,9 @@ async function startServer() {
     const transaction = db.transaction(() => {
       db.prepare(`
         UPDATE monitoring_entries 
-        SET value = ?, date = ?, location = ?, notes = ?
+        SET value = ?, date = ?, location = ?, notes = ?, disaggregation = ?
         WHERE id = ?
-      `).run(value, date, location, notes, id);
+      `).run(value, date, location, notes, JSON.stringify(disaggregation), id);
 
       db.prepare('UPDATE indicators SET actual = actual + ? WHERE id = ?').run(diff, indicatorId);
 
@@ -204,7 +238,8 @@ async function startServer() {
     const entries = db.prepare('SELECT * FROM monitoring_entries').all();
     res.json(entries.map((e: any) => ({
       ...e,
-      coordinates: e.latitude && e.longitude ? [e.latitude, e.longitude] : null
+      coordinates: e.latitude && e.longitude ? [e.latitude, e.longitude] : null,
+      disaggregation: e.disaggregation ? JSON.parse(e.disaggregation) : null
     })));
   });
 

@@ -11,7 +11,8 @@ $database = new Database();
 $db = $database->getConnection();
 
 $method = $_SERVER['REQUEST_METHOD'];
-$request = explode('/', trim($_SERVER['PATH_INFO'],'/'));
+$path = isset($_SERVER['PATH_INFO']) ? trim($_SERVER['PATH_INFO'], '/') : '';
+$request = explode('/', $path);
 $resource = array_shift($request);
 $id = array_shift($request);
 
@@ -21,6 +22,9 @@ if ($method == 'OPTIONS') {
 }
 
 switch ($resource) {
+    case 'projects':
+        handleProjects($method, $db, $id);
+        break;
     case 'indicators':
         handleIndicators($method, $db, $id);
         break;
@@ -30,10 +34,40 @@ switch ($resource) {
     case 'feedback':
         handleFeedback($method, $db, $id);
         break;
+    case 'reports':
+        handleReports($method, $db, $id);
+        break;
     default:
         http_response_code(404);
         echo json_encode(["message" => "Resource not found"]);
         break;
+}
+
+function handleProjects($method, $db, $id) {
+    switch ($method) {
+        case 'GET':
+            if ($id) {
+                $stmt = $db->prepare("SELECT * FROM projects WHERE id = ?");
+                $stmt->execute([$id]);
+                $result = $stmt->fetch();
+            } else {
+                $stmt = $db->prepare("SELECT * FROM projects");
+                $stmt->execute();
+                $result = $stmt->fetchAll();
+            }
+            echo json_encode($result);
+            break;
+        case 'POST':
+            $data = json_decode(file_get_contents("php://input"));
+            $stmt = $db->prepare("INSERT INTO projects (id, name, description, startDate, endDate) VALUES (?, ?, ?, ?, ?)");
+            if ($stmt->execute([$data->id ?? uniqid(), $data->name, $data->description ?? null, $data->startDate ?? null, $data->endDate ?? null])) {
+                echo json_encode(["status" => "success"]);
+            } else {
+                http_response_code(500);
+                echo json_encode(["status" => "error"]);
+            }
+            break;
+    }
 }
 
 function handleIndicators($method, $db, $id) {
@@ -52,8 +86,8 @@ function handleIndicators($method, $db, $id) {
             break;
         case 'POST':
             $data = json_decode(file_get_contents("php://input"));
-            $stmt = $db->prepare("INSERT INTO indicators (id, name, target, unit, category, actual, achievedPercentage, gap, status) VALUES (?, ?, ?, ?, ?, 0, 0, ?, 'behind')");
-            if ($stmt->execute([$data->id, $data->name, $data->target, $data->unit, $data->category, $data->target])) {
+            $stmt = $db->prepare("INSERT INTO indicators (id, projectId, name, target, unit, category, actual, achievedPercentage, gap, status) VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?, 'behind')");
+            if ($stmt->execute([$data->id ?? uniqid(), $data->projectId ?? null, $data->name, $data->target, $data->unit, $data->category, $data->target])) {
                 echo json_encode(["status" => "success"]);
             } else {
                 http_response_code(500);
@@ -62,8 +96,8 @@ function handleIndicators($method, $db, $id) {
             break;
         case 'PUT':
             $data = json_decode(file_get_contents("php://input"));
-            $stmt = $db->prepare("UPDATE indicators SET name = ?, target = ?, unit = ?, category = ? WHERE id = ?");
-            if ($stmt->execute([$data->name, $data->target, $data->unit, $data->category, $id])) {
+            $stmt = $db->prepare("UPDATE indicators SET name = ?, target = ?, unit = ?, category = ?, projectId = ? WHERE id = ?");
+            if ($stmt->execute([$data->name, $data->target, $data->unit, $data->category, $data->projectId ?? null, $id])) {
                 recalculateIndicator($db, $id);
                 echo json_encode(["status" => "success"]);
             } else {
@@ -88,14 +122,30 @@ function handleMonitoring($method, $db, $id) {
         case 'GET':
             $stmt = $db->prepare("SELECT * FROM monitoring_entries");
             $stmt->execute();
-            echo json_encode($stmt->fetchAll());
+            $result = $stmt->fetchAll();
+            foreach ($result as &$row) {
+                if (isset($row['disaggregation'])) {
+                    $row['disaggregation'] = json_decode($row['disaggregation'], true);
+                }
+            }
+            echo json_encode($result);
             break;
         case 'POST':
             $data = json_decode(file_get_contents("php://input"));
             $db->beginTransaction();
             try {
-                $stmt = $db->prepare("INSERT INTO monitoring_entries (id, indicatorId, date, value, location, notes, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-                $stmt->execute([$data->id, $data->indicatorId, $data->date, $data->value, $data->location, $data->notes, $data->latitude ?? null, $data->longitude ?? null]);
+                $stmt = $db->prepare("INSERT INTO monitoring_entries (id, indicatorId, date, value, location, notes, latitude, longitude, disaggregation) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt->execute([
+                    $data->id ?? uniqid(), 
+                    $data->indicatorId, 
+                    $data->date, 
+                    $data->value, 
+                    $data->location, 
+                    $data->notes ?? null, 
+                    $data->latitude ?? null, 
+                    $data->longitude ?? null,
+                    isset($data->disaggregation) ? json_encode($data->disaggregation) : null
+                ]);
                 
                 $stmt = $db->prepare("UPDATE indicators SET actual = actual + ? WHERE id = ?");
                 $stmt->execute([$data->value, $data->indicatorId]);
@@ -109,7 +159,15 @@ function handleMonitoring($method, $db, $id) {
                 echo json_encode(["status" => "error", "message" => $e->getMessage()]);
             }
             break;
-        // Add PUT and DELETE similarly...
+    }
+}
+
+function handleReports($method, $db, $id) {
+    if ($method == 'POST') {
+        // Mock report generation
+        echo json_encode(["status" => "success", "message" => "Report generated successfully", "download_url" => "#"]);
+    } else {
+        echo json_encode(["message" => "Method not allowed"]);
     }
 }
 
@@ -118,6 +176,8 @@ function recalculateIndicator($db, $indicatorId) {
     $stmt->execute([$indicatorId]);
     $ind = $stmt->fetch();
     
+    if (!$ind) return;
+
     $achieved = round(($ind['actual'] / $ind['target']) * 100);
     $gap = $ind['target'] - $ind['actual'];
     $status = $achieved >= 90 ? 'on-track' : ($achieved >= 70 ? 'at-risk' : 'behind');
