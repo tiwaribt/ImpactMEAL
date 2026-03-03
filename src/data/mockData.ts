@@ -1,0 +1,95 @@
+import { Indicator, MonitoringEntry, QualitativeFeedback } from '../types';
+
+export const indicators: Indicator[] = [
+  {
+    id: '1',
+    name: 'Number of beneficiaries reached',
+    target: 5000,
+    actual: 4250,
+    unit: 'people',
+    category: 'Outreach',
+    trend: 'up',
+    status: 'on-track',
+    gap: 750,
+    achievedPercentage: 85,
+    lastUpdated: '2026-02-28',
+  },
+  {
+    id: '2',
+    name: 'Training completion rate',
+    target: 95,
+    actual: 88,
+    unit: '%',
+    category: 'Capacity Building',
+    trend: 'stable',
+    status: 'at-risk',
+    gap: 7,
+    achievedPercentage: 92.6,
+    lastUpdated: '2026-02-25',
+  },
+  {
+    id: '3',
+    name: 'Community satisfaction index',
+    target: 4.5,
+    actual: 4.2,
+    unit: '/5',
+    category: 'Accountability',
+    trend: 'up',
+    status: 'on-track',
+    gap: 0.3,
+    achievedPercentage: 93.3,
+    lastUpdated: '2026-02-20',
+  },
+  {
+    id: '4',
+    name: 'Average response time to feedback',
+    target: 48,
+    actual: 36,
+    unit: 'hours',
+    category: 'Accountability',
+    trend: 'down',
+    status: 'on-track',
+    gap: -12, // Negative gap means better than target
+    achievedPercentage: 125,
+    lastUpdated: '2026-02-27',
+  },
+];
+
+export const monitoringEntries: MonitoringEntry[] = [
+  { id: '101', date: '2026-02-01', indicatorId: '1', value: 850, location: 'Region A' },
+  { id: '102', date: '2026-02-05', indicatorId: '1', value: 1200, location: 'Region B' },
+  { id: '103', date: '2026-02-10', indicatorId: '1', value: 950, location: 'Region C' },
+  { id: '104', date: '2026-02-15', indicatorId: '1', value: 1250, location: 'Region D' },
+  { id: '201', date: '2026-02-02', indicatorId: '2', value: 90, location: 'Region A' },
+  { id: '202', date: '2026-02-12', indicatorId: '2', value: 85, location: 'Region B' },
+];
+
+export const qualitativeFeedback: QualitativeFeedback[] = [
+  {
+    id: 'f1',
+    date: '2026-02-14',
+    source: 'Focus Group Discussion - Region A',
+    content: 'The training was very helpful, but the materials were provided too late. We need more hands-on practice next time.',
+    sentiment: 'neutral',
+    themes: ['Training', 'Materials', 'Timing'],
+    summary: 'Beneficiaries appreciated the training but requested earlier distribution of materials and more practical sessions.',
+  },
+  {
+    id: 'f2',
+    date: '2026-02-18',
+    source: 'Community Feedback Box - Region B',
+    content: 'The new irrigation system has significantly improved our crop yield. We are now able to harvest twice a year instead of once.',
+    sentiment: 'positive',
+    themes: ['Infrastructure', 'Livelihood', 'Impact'],
+    summary: 'Positive impact of irrigation system on agricultural productivity and harvesting frequency.',
+  },
+  {
+    id: 'f3',
+    date: '2026-02-20',
+    source: 'Key Informant Interview - Local Leader',
+    content: 'There is a lack of communication between the project staff and the local authorities. This causes delays in implementation.',
+    sentiment: 'negative',
+    themes: ['Communication', 'Coordination', 'Implementation'],
+    summary: 'Coordination issues between project team and local leadership leading to delays.',
+  },
+];
